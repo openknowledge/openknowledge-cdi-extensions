@@ -1,0 +1,2 @@
+de.openknowledge.cdi.scope.DestroyableContextExtension
+de.openknowledge.cdi.scope.ThreadContextExtension

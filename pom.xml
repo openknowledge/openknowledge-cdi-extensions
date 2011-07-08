@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>de.openknowledge.cdi</groupId>
+  <artifactId>openknowledge-cdi-modules</artifactId>
+  <name>open knowledge CDI extensions</name>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <url>http://www.openknowledge.de</url>
+  <inceptionYear>2011</inceptionYear>
+
+  <modules>
+    <module>openknowledge-cdi-parent-pom</module>
+    <module>openknowledge-cdi-test</module>
+    <module>openknowledge-cdi-common</module>
+    <module>openknowledge-cdi-inject</module>
+    <module>openknowledge-cdi-lifecycle</module>
+    <module>openknowledge-cdi-scope</module>
+    <module>openknowledge-cdi-jpa</module>
+    <module>openknowledge-cdi-transaction</module>
+    <module>openknowledge-cdi-job</module>
+    <module>openknowledge-cdi-monitoring</module>
+    
+  </modules>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-ssh</artifactId>
+        <version>1.0-beta-7</version>
+      </extension>
+    </extensions>
+  </build>
+
+  <distributionManagement>
+    <repository>
+      <id>ok-repo</id>
+      <url>scp://repo.openknowledge.de/www/repo/repository</url>
+    </repository>
+  </distributionManagement>
+
+</project>
