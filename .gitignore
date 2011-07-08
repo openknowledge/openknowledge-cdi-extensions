@@ -1,0 +1,5 @@
+# Top Level ignores $Id$
+# Ignore Idea files
+*.ipr
+*.iws
+*.ipr
