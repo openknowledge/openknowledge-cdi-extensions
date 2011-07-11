@@ -25,6 +25,10 @@ import org.junit.runner.RunWith;
 
 import javax.inject.Inject;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.net.URL;
+
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -38,8 +42,21 @@ public class FileAccessPropertyTest {
   private FilePropertyTestBean testBean;
 
   @BeforeClass
-  public static void setUp() {
-    System.setProperty("property.test.path", "src/test/resources");
+  public static void setUp() throws Exception {
+    // since the current path varies depending on our current runtime
+    // (IDE, maven, ...) we simply create the file.
+    File path = new File("target");
+    if (!path.exists()) {
+      path.mkdirs();
+    }
+    File file = new File("target/FileAccessPropertyTest.properties");
+
+    FileOutputStream out = new FileOutputStream(file);
+    out.write("testString=successful\n".getBytes());
+    out.write("testInt=50".getBytes());
+    out.close();
+
+    System.setProperty("property.test.path", "target");
   }
 
   @AfterClass

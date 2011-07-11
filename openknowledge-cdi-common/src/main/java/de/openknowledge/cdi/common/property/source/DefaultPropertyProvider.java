@@ -44,16 +44,20 @@ import java.util.regex.Pattern;
  * will happen in an undefined order. You may define the lookup order by supplying orders using
  * {@link de.openknowledge.cdi.common.annotation.Order}.
  * <p/>
- * Source names may contain system properties (e.g. ${java.io.tmpdir}} and will be automatically replaced before
- * starting the internal loader lookup and property retrieval.
+ * Source names  may contain system properties (e.g. ${java.io.tmpdir}} and
+ * will be automatically replaced before starting the internal loader lookup and property retrieval.
+ * <p/>
+ * Property files may contain self references to properties from the same property source or system properties.
  *
+ * @author Arne Limburg - open knowledge GmbH
  * @author Jens Schumann - open knowledge GmbH
+
  * @version $Revision: 7662 $
  */
 
 public class DefaultPropertyProvider implements PropertyProvider {
 
-  private static final Pattern SYSTEM_PROPERTY_PATTERN = Pattern.compile("\\$\\{([\\w\\.\\-]+)\\}");
+  private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([\\w\\.\\-]+)\\}");
 
   @Inject
   @Any
@@ -67,12 +71,12 @@ public class DefaultPropertyProvider implements PropertyProvider {
   public String getPropertyValue(InjectionPoint injectionPoint) {
     Property property = injectionPoint.getAnnotated().getAnnotation(Property.class);
 
-    String sourceName = calculateSourceName(injectionPoint, property);
+    String source = getSource(injectionPoint, property);
 
     String value = null;
 
-    if (sourceName != null) {
-      value = getProperties(sourceName).getProperty(property.name());
+    if (source != null) {
+      value = getProperties(source).getProperty(property.name());
     }
 
     if (value == null && !"".equals(property.defaultValue())) {
@@ -82,12 +86,12 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
-  private String calculateSourceName(InjectionPoint aInjectionPoint, Property property) {
+  protected String getSource(InjectionPoint aInjectionPoint, Property property) {
     if (sourceNameMap.containsKey(aInjectionPoint)) {
       return sourceNameMap.get(aInjectionPoint);
     }
 
-    String sourceName = extractSourceName(aInjectionPoint, property);
+    String sourceName = extractSource(aInjectionPoint, property);
     if (sourceName != null) {
       sourceNameMap.put(aInjectionPoint, sourceName);
     }
@@ -95,19 +99,19 @@ public class DefaultPropertyProvider implements PropertyProvider {
     return sourceName;
   }
 
-  public String extractSourceName(InjectionPoint injectionPoint, Property property) {
-    String sourcename = property.source();
-    if (sourcename.length() == 0) {
-      sourcename = extractSourceNameFromClass(injectionPoint.getBean().getBeanClass());
-      if (sourcename == null) {
-        sourcename = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
+  protected String extractSource(InjectionPoint injectionPoint, Property property) {
+    String source = property.source();
+    if (source.length() == 0) {
+      source = extractSourceFromClass(injectionPoint.getBean().getBeanClass());
+      if (source == null) {
+        source = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
       }
     }
 
-    return sourcename;
+    return source;
   }
 
-  protected String extractSourceNameFromClass(Class<?> beanClass) {
+  protected String extractSourceFromClass(Class<?> beanClass) {
     PropertySource sourceAnn = beanClass.getAnnotation(PropertySource.class);
     if (sourceAnn != null) {
       return sourceAnn.value();
@@ -130,13 +134,38 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
-  private String filterSource(String aSource) {
 
+  protected Properties getProperties(String source) {
+    Properties p = properties.get(source);
+    return p != null ? p : loadPropertiesFromLoader(source);
+  }
+
+
+  protected synchronized Properties loadPropertiesFromLoader(String source) {
+    String expandedSourceName = expandSourceSystemProperties(source);
+
+    for (PropertySourceLoader sourceLoader : sourceLoaders) {
+      if (sourceLoader.supports(expandedSourceName)) {
+        Properties p = sourceLoader.load(expandedSourceName);
+        for (Object key : p.keySet()) {
+          p.put(key, expandProperties(p, String.valueOf(p.get(key))));
+        }
+
+        // cache result
+        properties.put(source, p);
+        return p;
+      }
+    }
+    throw new IllegalArgumentException("Unsupported source reference " + expandedSourceName);
+  }
+
+
+  protected String expandSourceSystemProperties(String value) {
     StringBuffer sb = new StringBuffer();
-    Matcher matcher = SYSTEM_PROPERTY_PATTERN.matcher(aSource);
+    Matcher matcher = PROPERTY_PATTERN.matcher(value);
     while (matcher.find()) {
       String placeHolder = matcher.group(1);
-      String replacement = replaceHolder(placeHolder);
+      String replacement = replaceSourceSystemProperty(placeHolder);
       if (replacement == null) {
         // mark unreplaceable placeolder
         replacement = "\\$\\{!" + placeHolder + "\\!\\}";
@@ -145,50 +174,52 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
 
     matcher.appendTail(sb);
-
     return sb.toString();
   }
 
-
-  private String replaceHolder(String placeHolder) {
+  protected String replaceSourceSystemProperty(String placeHolder) {
     Object value = System.getProperties().get(placeHolder);
     if (value == null) {
       return null;
     } else {
-      return filterSource(String.valueOf(value));
+      return expandSourceSystemProperties(String.valueOf(value));
     }
   }
 
-  protected Properties getProperties(String sourceName) {
-    Properties p = properties.get(sourceName);
-    return p != null ? p : loadProperties(sourceName);
-  }
-
-  protected synchronized Properties loadProperties(String sourceName) {
-    if (properties.containsKey(sourceName)) {
-      return properties.get(sourceName);
-    }
-
-    Properties p = loadPropertiesFromLoader(sourceName);
-    properties.put(sourceName, p);
-
-    return p;
-  }
-
-
-  public Properties loadPropertiesFromLoader(String sourceName) {
-    sourceName = filterSource(sourceName);
-    for (PropertySourceLoader sourceLoader : sourceLoaders) {
-      if (sourceLoader.supports(sourceName)) {
-        return sourceLoader.load(sourceName);
+   protected String expandProperties(Properties p, String value) {
+    StringBuffer sb = new StringBuffer();
+    Matcher matcher = PROPERTY_PATTERN.matcher(value);
+    while (matcher.find()) {
+      String placeHolder = matcher.group(1);
+      String replacement = replaceProperty(p, placeHolder);
+      if (replacement == null) {
+        // mark unreplaceable placeolder
+        replacement = "\\$\\{!" + placeHolder + "\\!\\}";
       }
+      matcher.appendReplacement(sb, replacement);
     }
-    throw new IllegalArgumentException("Unsupported source reference " + sourceName);
+
+    matcher.appendTail(sb);
+    return sb.toString();
+  }
+
+
+  protected String replaceProperty(Properties p , String placeHolder) {
+    Object value = p.get(placeHolder);
+    if (value == null) {
+      value = System.getProperties().get(placeHolder);
+    }
+      
+    if (value == null) {
+      return null;
+    } else {
+      return expandSourceSystemProperties(String.valueOf(value));
+    }
   }
 
 
   @PostConstruct
-  public void init() {
+  protected void init() {
     List<PropertySourceLoader> unsorted = new ArrayList<PropertySourceLoader>();
 
     for (PropertySourceLoader newSourceLoader : supportedSources) {
@@ -214,7 +245,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
       }
     }
 
-    // prepend all nonsorted loaders
+    // prepend all unordered loaders
     sourceLoaders.addAll(0, unsorted);
   }
 }
