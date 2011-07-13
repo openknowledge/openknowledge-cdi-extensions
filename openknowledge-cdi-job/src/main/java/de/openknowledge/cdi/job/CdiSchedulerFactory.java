@@ -16,10 +16,12 @@
 
 package de.openknowledge.cdi.job;
 
+import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 
+import de.openknowledge.cdi.common.property.Property;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.core.QuartzScheduler;
@@ -27,7 +29,20 @@ import org.quartz.core.QuartzSchedulerResources;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
 
+import java.util.Properties;
+
 /**
+ * Our cdi enabled scheduler factory. Pretty much works like Quartz
+ * StdSchedulerFactory, however properties may be provided through cdi
+ * {@link de.openknowledge.cdi.common.property.Property} support. If you
+ * use in a {@link de.openknowledge.cdi.common.property.Property} enabled
+ * environment regular org.quartz properties they will be injected to this
+ * factory.
+ *
+ * <p/>
+ * If CDI does not provide properties standard quartz configuration
+ * applies.
+ *
  * @author Arne Limburg - open knowledge GmbH
  */
 @ApplicationScoped
@@ -35,6 +50,10 @@ public class CdiSchedulerFactory extends StdSchedulerFactory {
 
   @Inject
   private JobFactory jobFactory;
+
+  @Inject
+  @Property(name = "org.quartz.*", mask = true)
+  private Properties properties;
 
   @Produces
   @ApplicationScoped
@@ -55,5 +74,17 @@ public class CdiSchedulerFactory extends StdSchedulerFactory {
     } catch (SchedulerException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  @PostConstruct
+  protected void init() {
+    if (properties!= null && properties.size() > 0) {
+      try {
+        initialize(properties);
+      } catch (SchedulerException e) {
+        throw new IllegalArgumentException(e);
+      }
+    }
+
   }
 }

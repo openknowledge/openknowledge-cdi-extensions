@@ -32,6 +32,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <p/>
  * Properties will be automatically converted to java primitives
  * and Strings. Currently supported conversions are String , boolean, int and long.
+ * <p/>
+ * A group of properties may be access using a property wildcard. Example:
+ * &#064;Inject @Property(name="all.for.namespace.*") private Properties prop;
  *
  * @author Arne Limburg - open knowledge GmbH
  * @author Jens Schumann - open knowledge GmbH

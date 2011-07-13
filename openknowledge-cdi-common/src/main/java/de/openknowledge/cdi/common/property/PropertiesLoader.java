@@ -23,6 +23,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
+import java.util.Properties;
 
 /**
  * Our property source.
@@ -40,6 +41,13 @@ public class PropertiesLoader {
 
   @Inject
   private PropertyProvider provider;
+
+
+  @Produces
+  @Property(name = "any")
+  public Properties produceWildcardProperties(InjectionPoint injectionPoint) {
+    return provider.getPropertyValues(injectionPoint);
+  }
 
 
   @Produces

@@ -51,7 +51,6 @@ import java.util.regex.Pattern;
  *
  * @author Arne Limburg - open knowledge GmbH
  * @author Jens Schumann - open knowledge GmbH
-
  * @version $Revision: 7662 $
  */
 
@@ -86,17 +85,43 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
+  public Properties getPropertyValues(InjectionPoint wildCard) {
+    // TODO cache it.
+    Property property = wildCard.getAnnotated().getAnnotation(Property.class);
+    String wildcardName = property.name();
+    if (!wildcardName.endsWith("*")) {
+      throw new IllegalArgumentException("You need to specify a wildcard to access properties. Missing wildcard in " +
+        wildcardName);
+    }
+
+    String source = getSource(wildCard, property);
+
+    Properties p = new Properties();
+
+    if (source != null) {
+      String keyPrefix = wildcardName.substring(0, wildcardName.length() - 1);
+      Properties allProperties = getProperties(source);
+      for (Object o : allProperties.keySet()) {
+        if (String.valueOf(o).startsWith(keyPrefix)) {
+          p.put(o, allProperties.get(o));
+        }
+      }
+    }
+
+    return p;
+  }
+
   protected String getSource(InjectionPoint aInjectionPoint, Property property) {
     if (sourceNameMap.containsKey(aInjectionPoint)) {
       return sourceNameMap.get(aInjectionPoint);
     }
 
-    String sourceName = extractSource(aInjectionPoint, property);
-    if (sourceName != null) {
-      sourceNameMap.put(aInjectionPoint, sourceName);
+    String source = extractSource(aInjectionPoint, property);
+    if (source != null) {
+      sourceNameMap.put(aInjectionPoint, source);
     }
 
-    return sourceName;
+    return source;
   }
 
   protected String extractSource(InjectionPoint injectionPoint, Property property) {
@@ -186,7 +211,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
-   protected String expandProperties(Properties p, String value) {
+  protected String expandProperties(Properties p, String value) {
     StringBuffer sb = new StringBuffer();
     Matcher matcher = PROPERTY_PATTERN.matcher(value);
     while (matcher.find()) {
@@ -204,12 +229,12 @@ public class DefaultPropertyProvider implements PropertyProvider {
   }
 
 
-  protected String replaceProperty(Properties p , String placeHolder) {
+  protected String replaceProperty(Properties p, String placeHolder) {
     Object value = p.get(placeHolder);
     if (value == null) {
       value = System.getProperties().get(placeHolder);
     }
-      
+
     if (value == null) {
       return null;
     } else {

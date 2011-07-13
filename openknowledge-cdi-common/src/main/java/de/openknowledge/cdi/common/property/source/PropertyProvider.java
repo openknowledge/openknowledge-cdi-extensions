@@ -17,6 +17,7 @@
 package de.openknowledge.cdi.common.property.source;
 
 import javax.enterprise.inject.spi.InjectionPoint;
+import java.util.Properties;
 
 /**
  * @author Jens Schumann - open knowledge GmbH
@@ -25,6 +26,22 @@ import javax.enterprise.inject.spi.InjectionPoint;
 
 public interface PropertyProvider {
 
+  /**
+   *
+   * Provides the current property value.
+   *
+   * @param injectionPoint The injection point.
+   * @return The value, may be null.
+   */
   public String getPropertyValue(InjectionPoint injectionPoint);
+
+  /**
+   *
+   * Provide all properties for a property wild card (such as foo.*)
+   *
+   * @param wildCard The injection point for a wildcard.
+   * @return The located properties. May be empty.
+   */
+  public Properties getPropertyValues(InjectionPoint wildCard);
 
 }

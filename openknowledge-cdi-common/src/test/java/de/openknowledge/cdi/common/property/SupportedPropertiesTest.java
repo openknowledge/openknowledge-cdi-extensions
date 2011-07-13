@@ -37,10 +37,6 @@ public class SupportedPropertiesTest {
   @Current
   private ApplicationProperties properties;
 
-  @Inject
-  @Property(name="testString")
-  private String testProperty;
-
   @Test
   public void testCurrentProperties() throws Exception {
 
