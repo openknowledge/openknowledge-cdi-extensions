@@ -40,7 +40,7 @@ import java.util.Properties;
 @Order(Integer.MAX_VALUE - 1)
 public class FilePropertySourceLoader extends AbstractPropertySourceLoader {
 
-  public static final String FILE_PREFIX = "file://";
+  public static final String FILE_PREFIX = "file:";
 
   private static final Log LOG = LogFactory.getLog(FilePropertySourceLoader.class);
 

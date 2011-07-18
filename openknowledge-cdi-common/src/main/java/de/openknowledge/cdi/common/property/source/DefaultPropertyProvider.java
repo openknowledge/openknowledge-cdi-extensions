@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -55,8 +54,6 @@ import java.util.regex.Pattern;
  */
 
 public class DefaultPropertyProvider implements PropertyProvider {
-
-  private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([\\w\\.\\-]+)\\}");
 
   @Inject
   @Any
@@ -186,46 +183,40 @@ public class DefaultPropertyProvider implements PropertyProvider {
 
 
   protected String expandSourceSystemProperties(String value) {
-    StringBuffer sb = new StringBuffer();
-    Matcher matcher = PROPERTY_PATTERN.matcher(value);
-    while (matcher.find()) {
-      String placeHolder = matcher.group(1);
-      String replacement = replaceSourceSystemProperty(placeHolder);
-      if (replacement == null) {
-        // mark unreplaceable placeolder
-        replacement = "\\$\\{!" + placeHolder + "\\!\\}";
+    int i = value.indexOf("${");
+    if (i > 0) {
+      int last = value.indexOf("}", i);
+      if (last > 0) {
+        String placeholder = value.substring(i + 2, last);
+        value = value.substring(0, i) + replaceSourceSystemProperty(placeholder) + value.substring(last + 1);
+        return expandSourceSystemProperties(value);
       }
-      matcher.appendReplacement(sb, replacement);
     }
 
-    matcher.appendTail(sb);
-    return sb.toString();
+    return value;
   }
 
   protected String replaceSourceSystemProperty(String placeHolder) {
     Object value = System.getProperties().get(placeHolder);
     if (value == null) {
-      return null;
+      return "!" + placeHolder + "!";
     } else {
-      return expandSourceSystemProperties(String.valueOf(value));
+      return String.valueOf(value);
     }
   }
 
   protected String expandProperties(Properties p, String value) {
-    StringBuffer sb = new StringBuffer();
-    Matcher matcher = PROPERTY_PATTERN.matcher(value);
-    while (matcher.find()) {
-      String placeHolder = matcher.group(1);
-      String replacement = replaceProperty(p, placeHolder);
-      if (replacement == null) {
-        // mark unreplaceable placeolder
-        replacement = "\\$\\{!" + placeHolder + "\\!\\}";
+    int i = value.indexOf("${");
+    if (i >= 0) {
+      int last = value.indexOf("}", i);
+      if (last > 0) {
+        String placeholder = value.substring(i + 2, last);
+        value = value.substring(0, i) + replaceProperty(p, placeholder) + value.substring(last + 1);
+        return expandProperties(p, value);
       }
-      matcher.appendReplacement(sb, replacement);
     }
 
-    matcher.appendTail(sb);
-    return sb.toString();
+    return value;
   }
 
 
@@ -236,9 +227,9 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
 
     if (value == null) {
-      return null;
+      return "!" + placeHolder + "!";
     } else {
-      return expandSourceSystemProperties(String.valueOf(value));
+      return String.valueOf(value);
     }
   }
 

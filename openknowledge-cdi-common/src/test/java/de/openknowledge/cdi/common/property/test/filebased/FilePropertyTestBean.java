@@ -27,11 +27,11 @@ import javax.inject.Inject;
 public class FilePropertyTestBean {
 
   @Inject
-  @Property(name = "testString", source = "file://target/FileAccessPropertyTest.properties")
+  @Property(name = "testString", source = "file:target/FileAccessPropertyTest.properties")
   private String testStringProperty;
 
   @Inject
-  @Property(name = "testString", source = "file://${property.test.path}/FileAccessPropertyTest.properties")
+  @Property(name = "testString", source = "file:${property.test.path}/FileAccessPropertyTest.properties")
   private String testStringPropertyWithPlaceHolder;
 
   public String getTestStringProperty() {

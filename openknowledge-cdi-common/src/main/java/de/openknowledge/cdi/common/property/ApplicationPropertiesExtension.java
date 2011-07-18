@@ -43,8 +43,7 @@ import java.util.Set;
 public class ApplicationPropertiesExtension implements Extension {
 
   private ApplicationProperties properties = new ApplicationProperties();
-
-
+  
   public void recordProperty(@Observes ProcessAnnotatedType event) {
 
     AnnotatedType annotatedType = event.getAnnotatedType();
