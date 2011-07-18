@@ -23,19 +23,19 @@ import org.quartz.JobBuilder;
  */
 public class CdiJobBuilder {
 
-	public static CdiJobBuilder newJob() {
-		return new CdiJobBuilder();
-	}
-	
-	public static JobBuilder newJob(Class<? extends Runnable> job) {
-		return new CdiJobBuilder().ofType(job);
-	}
-	
-	private CdiJobBuilder() {
-	}
-	
-	public JobBuilder ofType(Class<? extends Runnable> job) {
-		return JobBuilder.newJob(CdiJob.class)
-	      				 .usingJobData(CdiJob.JOB_CLASS_NAME_PROPERTY, job.getName());
-	}
+  public static CdiJobBuilder newJob() {
+    return new CdiJobBuilder();
+  }
+
+  public static JobBuilder newJob(Class<? extends Runnable> job) {
+    return new CdiJobBuilder().ofType(job);
+  }
+
+  private CdiJobBuilder() {
+  }
+
+  public JobBuilder ofType(Class<? extends Runnable> job) {
+    return JobBuilder.newJob(CdiJob.class)
+      .usingJobData(CdiJob.JOB_CLASS_NAME_PROPERTY, job.getName());
+  }
 }

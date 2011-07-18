@@ -23,6 +23,8 @@ import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 
 import de.openknowledge.cdi.common.property.Property;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.core.QuartzScheduler;
@@ -48,6 +50,8 @@ import java.util.Properties;
  */
 @ApplicationScoped
 public class CdiSchedulerFactory extends StdSchedulerFactory {
+  private static final Log LOG = LogFactory.getLog(CdiSchedulerFactory.class);
+
 
   @Inject
   private JobFactory jobFactory;
@@ -62,6 +66,7 @@ public class CdiSchedulerFactory extends StdSchedulerFactory {
     try {
       Scheduler scheduler = super.getScheduler();
       scheduler.start();
+      LOG.debug("Providing scheduler " + scheduler);
       return scheduler;
     } catch (SchedulerException e) {
       throw new IllegalArgumentException(e);
@@ -70,6 +75,7 @@ public class CdiSchedulerFactory extends StdSchedulerFactory {
 
   public void destroyScheduler(@Disposes Scheduler aScheduler) {
     try {
+      LOG.debug("Closing scheduler " + aScheduler);
       aScheduler.shutdown(true);
     } catch (SchedulerException e) {
       throw new IllegalArgumentException(e);
