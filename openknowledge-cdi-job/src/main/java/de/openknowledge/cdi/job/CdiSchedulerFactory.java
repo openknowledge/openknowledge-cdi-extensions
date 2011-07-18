@@ -18,6 +18,7 @@ package de.openknowledge.cdi.job;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Disposes;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 
@@ -62,6 +63,14 @@ public class CdiSchedulerFactory extends StdSchedulerFactory {
       Scheduler scheduler = super.getScheduler();
       scheduler.start();
       return scheduler;
+    } catch (SchedulerException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
+
+  public void destroyScheduler(@Disposes Scheduler aScheduler) {
+    try {
+      aScheduler.shutdown(true);
     } catch (SchedulerException e) {
       throw new IllegalArgumentException(e);
     }
