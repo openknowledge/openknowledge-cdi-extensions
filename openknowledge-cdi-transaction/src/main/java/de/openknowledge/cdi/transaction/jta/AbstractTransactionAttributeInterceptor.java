@@ -29,13 +29,14 @@ import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
 import javax.transaction.UserTransaction;
+import java.io.Serializable;
 
 /**
  * Handles JTA transactions
  *
  * @author Arne Limburg - open knowledge GmbH
  */
-public class AbstractTransactionAttributeInterceptor {
+public class AbstractTransactionAttributeInterceptor implements Serializable {
 
   @Inject
   private UserTransaction userTransaction;
