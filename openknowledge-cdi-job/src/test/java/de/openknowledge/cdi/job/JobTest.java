@@ -42,7 +42,7 @@ public class JobTest {
   @Inject
   private TestJob testJob;
 
-  @Test(timeout = 2000)
+  @Test(timeout = 10000)
   public void scheduleJob() throws SchedulerException {
     JobDetail job = newJob(TestJob.class).build();
     Trigger trigger = newTrigger().startNow().build();
