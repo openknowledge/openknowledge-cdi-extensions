@@ -16,21 +16,22 @@
 
 package de.openknowledge.cdi.common.property.source;
 
-import de.openknowledge.cdi.common.annotation.Order;
-import de.openknowledge.cdi.common.property.Property;
-import de.openknowledge.cdi.common.property.PropertySource;
+import java.beans.Introspector;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Instance;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
+
+import de.openknowledge.cdi.common.annotation.Order;
+import de.openknowledge.cdi.common.property.Property;
+import de.openknowledge.cdi.common.property.PropertySource;
 
 /**
  * Default implementation of our property provider. The default implementation
@@ -39,7 +40,7 @@ import java.util.regex.Pattern;
  * to identify the responsible {@link de.openknowledge.cdi.common.property.source.PropertySourceLoader}
  * for a given source name.
  * <p/>
- * Unless specified the lookup for an {@link de.openknowledge.cdi.common.property.source.PropertySourceLoader}
+ * Unless specified, the lookup for an {@link de.openknowledge.cdi.common.property.source.PropertySourceLoader}
  * will happen in an undefined order. You may define the lookup order by supplying orders using
  * {@link de.openknowledge.cdi.common.annotation.Order}.
  * <p/>
@@ -55,6 +56,8 @@ import java.util.regex.Pattern;
 
 public class DefaultPropertyProvider implements PropertyProvider {
 
+  public static final String PROPERTIES_FILE_EXTENSION = ".properties";
+	
   @Inject
   @Any
   private Instance<PropertySourceLoader> supportedSources;
@@ -127,6 +130,9 @@ public class DefaultPropertyProvider implements PropertyProvider {
       source = extractSourceFromClass(injectionPoint.getBean().getBeanClass());
       if (source == null) {
         source = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
+        if (source == null) {
+        	source = extractDefaultSource(injectionPoint.getBean().getBeanClass());
+        }
       }
     }
 
@@ -136,7 +142,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
   protected String extractSourceFromClass(Class<?> beanClass) {
     PropertySource sourceAnn = beanClass.getAnnotation(PropertySource.class);
     if (sourceAnn != null) {
-      return sourceAnn.value();
+      return resolve(beanClass.getPackage(), sourceAnn.value());
     }
 
     return null;
@@ -145,7 +151,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
   protected String extractSourceFromPackage(String packageName) {
     Package pkg = Package.getPackage(packageName);
     if (pkg != null && pkg.isAnnotationPresent(PropertySource.class)) {
-      return pkg.getAnnotation(PropertySource.class).value();
+      return resolve(pkg, pkg.getAnnotation(PropertySource.class).value());
     } else {
       int index = packageName.lastIndexOf('.');
       if (index > 0) {
@@ -156,6 +162,28 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
+  protected String extractDefaultSource(Class<?> beanClass) {
+    String defaultName = Introspector.decapitalize(beanClass.getSimpleName()) + PROPERTIES_FILE_EXTENSION;
+    return resolve(beanClass.getPackage(), defaultName);
+  }
+
+  protected String resolve(Package pkg, String source) {
+    if (isAbsolute(source)) {
+      return source.substring(1);
+    } else {
+      String packageName = pkg.getName();
+      int capacity = packageName.length() + source.length() + 1;
+      StringBuilder sourceBuilder = new StringBuilder(capacity);
+      sourceBuilder.append(packageName.replace('.', '/'));
+      sourceBuilder.append('/');
+      sourceBuilder.append(source);
+      return sourceBuilder.toString();
+    }
+  }
+  
+  protected boolean isAbsolute(String source) {
+    return source.charAt(0) == '/';
+  }
 
   protected Properties getProperties(String source) {
     Properties p = properties.get(source);

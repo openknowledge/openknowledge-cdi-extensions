@@ -67,6 +67,14 @@ public @interface Property {
    * property sources. See {@link PropertySource}
    * for syntax and global property source declaration.
    *
+   * The default value which is taken when this attribute is left blank
+   * and no {@link PropertySource} annotation is present at the appropriate places
+   * depends on the name of the class where this {@link Property} annotation is present:
+   * It is a properties file within the same package and the name of the class
+   * with a lower-case first letter and an appendix of .properties,
+   * i.e. if the class is com.example.MyClass,
+   * the default value of this attribute is /com/example/myClass.properties
+   *
    * @return The property source.
    */
   @Nonbinding String source() default "";

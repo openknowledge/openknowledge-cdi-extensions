@@ -37,16 +37,26 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * or absolute path in the file system. See {@link de.openknowledge.cdi.common.property.source.FilePropertySourceLoader}.
  * Classpath sources are .
  * <p/>
+ * All other sources are assumed to be classpath sources where sources starting with a <code>/</code>
+ * are assumed to be absolute classpath sources (resolved against the default package) and all other
+ * sources are assumed to be relative to the class where this annotation is present.
+ * <p/>
+ *
  * Examples:
  * <pre>
- *  application.properties                        - located in classpath in default package
- *  de/openknowledge/application.properties       - located in classpath in package de.openknowledge
- *  file://application.properties                 - located in file system relative to current application path
- *  file:///etc/application.properties            - located in a unix file system at /etc
- *  file://${config.path}}/application.properties - located in ${config.path}. ${config.path} is a java system property.
+ *  application.properties                       - located in classpath in the package where this annotation is present
+ *  resources/application.properties             - located in classpath relative to the package where this annotation is present
+ *                                                 (i.e. when this annotation is present at de/openknowledge/package_info.java
+ *                                                 the properties file is in package de.openknowledge.resources
+ *  /application.properties                      - located in classpath in default package
+ *  /de/openknowledge/application.properties     - located in classpath in package de.openknowledge
+ *  file://application.properties                - located in file system relative to current application path
+ *  file:///etc/application.properties           - located in a unix file system at /etc
+ *  file://${config.path}/application.properties - located in ${config.path}. ${config.path} is a java system property.
  * </pre>
  *
  * @author Jens Schumann - open knowledge GmbH
+ * @author Arne Limburg - open knowledge GmbH
  * @version $Revision: 7658 $
  */
 @Retention(RUNTIME)

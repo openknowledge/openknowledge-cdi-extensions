@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-@PropertySource("de/openknowledge/cdi/common/property/test.properties")
+@PropertySource("/de/openknowledge/cdi/common/property/test.properties")
 package de.openknowledge.cdi.common.property.test.pkgannontation;
 
 import de.openknowledge.cdi.common.property.PropertySource;

@@ -16,20 +16,20 @@
 
 package de.openknowledge.cdi.common.property;
 
-import de.openknowledge.cdi.common.property.test.filebased.FilePropertyTestBean;
-import de.openknowledge.cdi.test.CdiJunit4TestRunner;
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.FileOutputStream;
+
+import javax.inject.Inject;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import javax.inject.Inject;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.net.URL;
-
-import static org.junit.Assert.assertEquals;
+import de.openknowledge.cdi.common.property.test.filebased.FilePropertyTestBean;
+import de.openknowledge.cdi.test.CdiJunit4TestRunner;
 
 /**
  * @author Jens Schumann - open knowledge GmbH

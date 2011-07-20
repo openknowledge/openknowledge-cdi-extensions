@@ -27,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * @author Jens Schumann - open knowledge GmbH
  */
-@PropertySource("de/openknowledge/cdi/common/property/test.properties")
+@PropertySource("/de/openknowledge/cdi/common/property/test.properties")
 @RunWith(CdiJunit4TestRunner.class)
 public class ClassLevelPropertyInjectionTest {
 
