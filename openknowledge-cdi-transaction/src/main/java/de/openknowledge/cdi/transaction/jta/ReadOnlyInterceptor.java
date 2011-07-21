@@ -23,13 +23,14 @@ import javax.interceptor.AroundInvoke;
 import javax.interceptor.Interceptor;
 import javax.interceptor.InvocationContext;
 import javax.transaction.UserTransaction;
+import java.io.Serializable;
 
 /**
  * @author Jens Schumann - open knowledge GmbH
  */
 @ReadOnly
 @Interceptor
-public class ReadOnlyInterceptor {
+public class ReadOnlyInterceptor implements Serializable {
 
   @Inject
   private UserTransaction userTransaction;
