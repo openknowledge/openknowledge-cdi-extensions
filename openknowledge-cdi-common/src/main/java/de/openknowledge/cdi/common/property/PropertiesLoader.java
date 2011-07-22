@@ -16,11 +16,13 @@
 
 package de.openknowledge.cdi.common.property;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Properties;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
-import javax.enterprise.inject.spi.Annotated;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
 
@@ -54,12 +56,10 @@ public class PropertiesLoader {
   @Produces
   @Property(name = "any")
   public Object produceProperty(InjectionPoint injectionPoint) {
-    Annotated returnType = injectionPoint.getAnnotated();
-    return null;
+    Class<?> type = toClass(injectionPoint.getType());
+    return newInstance(type, produceStringProperty(injectionPoint));
   }
 
-  @Produces
-  @Property(name = "any")
   public String produceStringProperty(InjectionPoint injectionPoint) {
     String value = provider.getPropertyValue(injectionPoint);
     currentValues.registerPropertyValue(injectionPoint, value);
@@ -157,6 +157,36 @@ public class PropertiesLoader {
     return value.charAt(0);
   }
 
+  private Class<?> toClass(Type type) {
+    if (type instanceof Class<?>) {
+      return (Class<?>)type;
+    } else if (type instanceof ParameterizedType) {
+      return (Class<?>)((ParameterizedType)type).getRawType();
+    } else {
+      throw new IllegalArgumentException("unsupported type for property injection: " + type);
+    }
+  }
+
+  private <T> T newInstance(Class<T> type, String value) {
+    try {
+      return type.getConstructor(String.class).newInstance(value);
+    } catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException(type.getName() + " must have String-constructor to be injected");
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("String-constructor must be public");
+    } catch (InstantiationException e) {
+      throw new IllegalStateException(e);
+    } catch (InvocationTargetException e) {
+      if (e.getTargetException() instanceof RuntimeException) {
+        throw (RuntimeException)e.getTargetException();
+      } else if (e.getTargetException() instanceof Error) {
+        throw (Error)e.getTargetException();
+      } else {
+        throw new IllegalArgumentException(e.getTargetException());
+      }
+    }
+  }
+  
   private void assertNotNull(InjectionPoint injectionPoint, String value, Class<?> expectedType) {
     if (value == null) {
       throw buildIllegalArgumentException(injectionPoint, value, expectedType);

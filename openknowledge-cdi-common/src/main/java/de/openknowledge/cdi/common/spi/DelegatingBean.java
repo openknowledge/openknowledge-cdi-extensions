@@ -17,23 +17,69 @@
 package de.openknowledge.cdi.common.spi;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
+import java.util.Set;
 
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.inject.spi.Bean;
-import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.InjectionPoint;
 
 /**
  * A bean that is operator-specific
  *
  * @author Arne Limburg - open knowledge GmbH
  */
-public class DelegatingBean<T> extends AbstractCdiBean<T> {
+public class DelegatingBean<T> implements Bean<T> {
 
   private Bean<T> delegate;
 
-  public DelegatingBean(Bean<T> delegateBean, BeanManager beanManager, Annotation... qualifiers) {
-    super(delegateBean.getName(), delegateBean.getBeanClass(), beanManager, qualifiers);
+  public DelegatingBean(Bean<T> delegateBean) {
     delegate = delegateBean;
+  }
+
+  @Override
+  public Set<Type> getTypes() {
+    return delegate.getTypes();
+  }
+
+  @Override
+  public Set<Annotation> getQualifiers() {
+    return delegate.getQualifiers();
+  }
+
+  @Override
+  public Class<? extends Annotation> getScope() {
+    return delegate.getScope();
+  }
+
+  @Override
+  public String getName() {
+    return delegate.getName();
+  }
+
+  @Override
+  public Set<Class<? extends Annotation>> getStereotypes() {
+    return delegate.getStereotypes();
+  }
+
+  @Override
+  public Class<?> getBeanClass() {
+    return delegate.getBeanClass();
+  }
+
+  @Override
+  public boolean isAlternative() {
+    return delegate.isAlternative();
+  }
+
+  @Override
+  public boolean isNullable() {
+    return delegate.isNullable();
+  }
+
+  @Override
+  public Set<InjectionPoint> getInjectionPoints() {
+    return delegate.getInjectionPoints();
   }
 
   @Override

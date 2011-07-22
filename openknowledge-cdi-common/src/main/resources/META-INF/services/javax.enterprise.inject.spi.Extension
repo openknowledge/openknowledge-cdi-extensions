@@ -1,1 +1,2 @@
 de.openknowledge.cdi.common.property.ApplicationPropertiesExtension
+de.openknowledge.cdi.common.property.PropertiesLoaderExtension
