@@ -16,39 +16,24 @@
 
 package de.openknowledge.cdi.transaction.jta;
 
-import de.openknowledge.cdi.transaction.ReadOnly;
-
 import javax.inject.Inject;
-import javax.interceptor.AroundInvoke;
-import javax.interceptor.Interceptor;
-import javax.interceptor.InvocationContext;
 import javax.transaction.UserTransaction;
-import java.io.Serializable;
 
 /**
  * @author Jens Schumann - open knowledge GmbH
+ * @version $Revision$
  */
-@ReadOnly
-@Interceptor
-public class ReadOnlyInterceptor implements Serializable {
+public class DefaultUserTransactionHolder implements UserTransactionHolder {
 
+  private UserTransaction userTransaction;
+  
   @Inject
-  private UserTransactionHolder utTransactionHolder;
-
-  public ReadOnlyInterceptor() {
+  public DefaultUserTransactionHolder(UserTransaction aUserTransaction) {
+    userTransaction = aUserTransaction;
   }
 
-  public ReadOnlyInterceptor(UserTransaction aTx) {
-    utTransactionHolder = new DefaultUserTransactionHolder(aTx);
+  @Override
+  public UserTransaction getUserTransaction() {
+    return userTransaction;
   }
-
-  @AroundInvoke
-  public Object markReadOnly(InvocationContext ic) throws Exception {
-    try {
-      return ic.proceed();
-    } finally {
-      utTransactionHolder.getUserTransaction().setRollbackOnly();
-    }
-  }
-
 }

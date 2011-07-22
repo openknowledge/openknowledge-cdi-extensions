@@ -16,14 +16,16 @@
 
 package de.openknowledge.cdi.common.property;
 
-import de.openknowledge.cdi.common.property.source.PropertyProvider;
-import de.openknowledge.cdi.common.qualifier.Current;
+import java.util.Properties;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
+import javax.enterprise.inject.spi.Annotated;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
-import java.util.Properties;
+
+import de.openknowledge.cdi.common.property.source.PropertyProvider;
+import de.openknowledge.cdi.common.qualifier.Current;
 
 /**
  * Our property source.
@@ -49,44 +51,54 @@ public class PropertiesLoader {
     return provider.getPropertyValues(injectionPoint);
   }
 
+  @Produces
+  @Property(name = "any")
+  public Object produceProperty(InjectionPoint injectionPoint) {
+    Annotated returnType = injectionPoint.getAnnotated();
+    return null;
+  }
 
   @Produces
   @Property(name = "any")
   public String produceStringProperty(InjectionPoint injectionPoint) {
     String value = provider.getPropertyValue(injectionPoint);
-
     currentValues.registerPropertyValue(injectionPoint, value);
-
     return value;
   }
 
   @Produces
   @Property(name = "any")
-  public boolean produceBooleanProperty(InjectionPoint injectionPoint) {
+  public byte produceByteProperty(InjectionPoint injectionPoint) {
     String value = produceStringProperty(injectionPoint);
-
-    if (value == null) {
-      throw new IllegalArgumentException("Unable to convert null value to an boolean for injection point " +
-        injectionPoint.getAnnotated());
+    assertNotNull(injectionPoint, value, Byte.TYPE);
+    try {
+      return Byte.parseByte(value);
+    } catch (NumberFormatException e) {
+      throw buildIllegalArgumentException(injectionPoint, value, Byte.TYPE);
     }
-    return Boolean.valueOf(value.trim());
+  }
+
+  @Produces
+  @Property(name = "any")
+  public short produceShortProperty(InjectionPoint injectionPoint) {
+    String value = produceStringProperty(injectionPoint);
+    assertNotNull(injectionPoint, value, Short.TYPE);
+    try {
+      return Short.parseShort(value);
+    } catch (NumberFormatException e) {
+      throw buildIllegalArgumentException(injectionPoint, value, Short.TYPE);
+    }
   }
 
   @Produces
   @Property(name = "any")
   public int produceIntProperty(InjectionPoint injectionPoint) {
     String value = produceStringProperty(injectionPoint);
-
-    if (value == null) {
-      throw new IllegalArgumentException("Unable to convert null value to an integer for injection point " +
-        injectionPoint.getAnnotated());
-    }
-
+    assertNotNull(injectionPoint, value, Integer.TYPE);
     try {
       return Integer.parseInt(value);
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Unable to convert'" + value + "' to an integer for injection point " +
-        injectionPoint.getAnnotated());
+      throw buildIllegalArgumentException(injectionPoint, value, Integer.TYPE);
     }
   }
 
@@ -94,17 +106,75 @@ public class PropertiesLoader {
   @Property(name = "any")
   public long produceLongProperty(InjectionPoint injectionPoint) {
     String value = produceStringProperty(injectionPoint);
-
-    if (value == null) {
-      throw new IllegalArgumentException("Unable to convert null value to an long for injection point " +
-        injectionPoint.getAnnotated());
-    }
-
+    assertNotNull(injectionPoint, value, Long.TYPE);
     try {
       return Long.parseLong(value);
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Unable to convert'" + value + "' to an long for injection point " +
-        injectionPoint.getAnnotated());
+      throw buildIllegalArgumentException(injectionPoint, value, Long.TYPE);
     }
+  }
+
+  @Produces
+  @Property(name = "any")
+  public float produceFloatProperty(InjectionPoint injectionPoint) {
+    String value = produceStringProperty(injectionPoint);
+    assertNotNull(injectionPoint, value, Float.TYPE);
+    try {
+      return Float.parseFloat(value);
+    } catch (NumberFormatException e) {
+      throw buildIllegalArgumentException(injectionPoint, value, Float.TYPE);
+    }
+  }
+
+  @Produces
+  @Property(name = "any")
+  public double produceDoubleProperty(InjectionPoint injectionPoint) {
+    String value = produceStringProperty(injectionPoint);
+    assertNotNull(injectionPoint, value, Double.TYPE);
+    try {
+      return Double.parseDouble(value);
+    } catch (NumberFormatException e) {
+      throw buildIllegalArgumentException(injectionPoint, value, Double.TYPE);
+    }
+  }
+
+  @Produces
+  @Property(name = "any")
+  public boolean produceBooleanProperty(InjectionPoint injectionPoint) {
+    String value = produceStringProperty(injectionPoint);
+    assertNotNull(injectionPoint, value, Boolean.TYPE);
+    return Boolean.parseBoolean(value);
+  }
+
+  @Produces
+  @Property(name = "any")
+  public char produceCharProperty(InjectionPoint injectionPoint) {
+    String value = produceStringProperty(injectionPoint);
+    assertNotNull(injectionPoint, value, Character.TYPE);
+    if (value.length() != 1) {
+      throw buildIllegalArgumentException(injectionPoint, value, Character.TYPE);
+    }
+    return value.charAt(0);
+  }
+
+  private void assertNotNull(InjectionPoint injectionPoint, String value, Class<?> expectedType) {
+    if (value == null) {
+      throw buildIllegalArgumentException(injectionPoint, value, expectedType);
+    }
+  }
+
+  private RuntimeException buildIllegalArgumentException(InjectionPoint injectionPoint,
+                                                         String value,
+                                                         Class<?> expectedType) {
+    StringBuilder messageBuilder = new StringBuilder();
+    messageBuilder.append("Unable to convert ");
+    if (value == null) {
+      messageBuilder.append("null value");
+    } else {
+      messageBuilder.append('"').append(value).append('"');
+    }
+    messageBuilder.append(" to ").append(expectedType.getName());
+    messageBuilder.append(" for injection point ").append(injectionPoint);
+    return new IllegalArgumentException(messageBuilder.toString());
   }
 }
