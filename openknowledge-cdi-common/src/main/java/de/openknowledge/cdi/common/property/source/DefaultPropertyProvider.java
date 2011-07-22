@@ -168,7 +168,10 @@ public class DefaultPropertyProvider implements PropertyProvider {
   }
 
   protected String resolve(Package pkg, String source) {
-    if (isAbsolute(source)) {
+    // TODO ALI fix this  
+    if (source.startsWith("file:")) {
+      return source;
+    } else if (isAbsolute(source)) {
       return source.substring(1);
     } else {
       String packageName = pkg.getName();
@@ -182,7 +185,8 @@ public class DefaultPropertyProvider implements PropertyProvider {
   }
   
   protected boolean isAbsolute(String source) {
-    return !source.startsWith("file:") && source.charAt(0) == '/';
+    // TODO ALI fix this
+    return source.charAt(0) == '/';
   }
 
   protected Properties getProperties(String source) {
