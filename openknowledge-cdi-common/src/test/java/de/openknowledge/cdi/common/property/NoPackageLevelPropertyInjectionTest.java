@@ -40,6 +40,6 @@ public class NoPackageLevelPropertyInjectionTest {
 
   @Test
   public void success() {
-    assertNull( bean.getPropertyValue());
+    assertNull(bean.getPropertyValue());
   }
 }

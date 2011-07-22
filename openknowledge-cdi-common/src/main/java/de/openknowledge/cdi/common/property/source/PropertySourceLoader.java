@@ -16,6 +16,7 @@
 
 package de.openknowledge.cdi.common.property.source;
 
+import java.net.URI;
 import java.util.Properties;
 
 /**
@@ -29,10 +30,21 @@ import java.util.Properties;
  * Property loaders will be instantiated once.
  *
  * @author Jens Schumann - open knowledge GmbH
+ * @author Arne Limburg - open knowledge GmbH
  * @version $Revision: 7659 $
  */
 public interface PropertySourceLoader {
 
+  /**
+   * 
+   * Resolves the specified resource name against the specified package.
+   * 
+   * @param pkg the package where the resource was specified 
+   * @param resourceName the resource name
+   * @return the resolved resource name
+   */
+  public URI resolve(Package pkg, URI resourceName);
+  
   /**
    *
    * Indicate whether the given resource name is supported or not.
@@ -40,7 +52,7 @@ public interface PropertySourceLoader {
    * @param resourceName The resource name.
    * @return  True if the source name can be loaded.
    */
-  public boolean supports(String resourceName);
+  public boolean supports(URI resourceName);
 
   /**
    *
@@ -49,6 +61,6 @@ public interface PropertySourceLoader {
    * @param resourceName The name/path/identification of the resource.
    * @return The detected properties. May be empty.
    */
-  public Properties load(String resourceName);
+  public Properties load(URI resourceName);
 
 }

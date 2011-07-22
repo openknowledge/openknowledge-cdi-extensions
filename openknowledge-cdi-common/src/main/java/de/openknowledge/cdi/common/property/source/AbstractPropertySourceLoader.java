@@ -18,13 +18,19 @@ package de.openknowledge.cdi.common.property.source;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.Properties;
 
 /**
-* @author Jens Schumann - open knowledge GmbH
-* @version $Revision: 7659 $
-*/
+ * @author Jens Schumann - open knowledge GmbH
+ * @author Arne Limburg - open knowledge GmbH
+ * @version $Revision: 7659 $
+ */
 public abstract class AbstractPropertySourceLoader implements PropertySourceLoader {
+
+  public URI resolve(Package pkg, URI resource) {
+    return resource;
+  }
 
   public void loadFromStream(Properties properties, InputStream inputStream) throws IOException {
     if (inputStream == null) {

@@ -17,6 +17,8 @@
 package de.openknowledge.cdi.common.property.source;
 
 import java.beans.Introspector;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -57,13 +59,15 @@ import de.openknowledge.cdi.common.property.PropertySource;
 public class DefaultPropertyProvider implements PropertyProvider {
 
   public static final String PROPERTIES_FILE_EXTENSION = ".properties";
+
+  public static final String CLASSPATH_SCHEME = "classpath";
 	
   @Inject
   @Any
   private Instance<PropertySourceLoader> supportedSources;
 
-  private Map<String, Properties> properties = new ConcurrentHashMap<String, Properties>();
-  private Map<InjectionPoint, String> sourceNameMap = new ConcurrentHashMap<InjectionPoint, String>();
+  private Map<URI, Properties> properties = new ConcurrentHashMap<URI, Properties>();
+  private Map<InjectionPoint, URI> sourceNameMap = new ConcurrentHashMap<InjectionPoint, URI>();
 
   private List<PropertySourceLoader> sourceLoaders = new ArrayList<PropertySourceLoader>();
 
@@ -73,7 +77,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
 
     Properties properties = getProperties(getSource(injectionPoint, property));
 
-    return properties.getProperty(property.name(), expandPropertyValue(properties, property.defaultValue()));
+    return properties.getProperty(property.name(), getDefaultValue(properties, property));
 
   }
 
@@ -86,7 +90,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
         wildcardName);
     }
 
-    String source = getSource(wildCard, property);
+    URI source = getSource(wildCard, property);
 
     Properties p = new Properties();
 
@@ -102,13 +106,20 @@ public class DefaultPropertyProvider implements PropertyProvider {
 
     return p;
   }
+  
+  protected String getDefaultValue(Properties properties, Property property) {
+    if (property.defaultValue().length() == 0) {
+      return null;
+    }
+    return expandPropertyValue(properties, property.defaultValue());
+  }
 
-  protected String getSource(InjectionPoint aInjectionPoint, Property property) {
+  protected URI getSource(InjectionPoint aInjectionPoint, Property property) {
     if (sourceNameMap.containsKey(aInjectionPoint)) {
       return sourceNameMap.get(aInjectionPoint);
     }
 
-    String source = extractSource(aInjectionPoint, property);
+    URI source = extractSource(aInjectionPoint, property);
     if (source != null) {
       sourceNameMap.put(aInjectionPoint, source);
     }
@@ -116,34 +127,40 @@ public class DefaultPropertyProvider implements PropertyProvider {
     return source;
   }
 
-  protected String extractSource(InjectionPoint injectionPoint, Property property) {
-    if (property.source().length() > 0) {
-      return property.source();
+  protected URI extractSource(InjectionPoint injectionPoint, Property property) {
+    URI propertySource = extractFromProperty(injectionPoint, property);
+    if (propertySource != null) {
+      return propertySource;
     }
-    String classSource = extractSourceFromClass(injectionPoint.getBean().getBeanClass());
+    URI classSource = extractSourceFromClass(injectionPoint.getBean().getBeanClass());
     if (classSource != null) {
       return classSource;
     }
-    String packageSource = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
+    URI packageSource = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
     if (packageSource != null) {
       return packageSource;
     }
     return extractDefaultSource(injectionPoint.getBean().getBeanClass());
   }
 
-  protected String extractSourceFromClass(Class<?> beanClass) {
-    PropertySource sourceAnn = beanClass.getAnnotation(PropertySource.class);
-    if (sourceAnn != null) {
-      return resolve(beanClass.getPackage(), sourceAnn.value());
+  protected URI extractFromProperty(InjectionPoint injectionPoint, Property property) {
+    if (property.source().length() == 0) {
+      return null;
     }
-
-    return null;
+    return toUri(injectionPoint.getBean().getBeanClass().getPackage(), property.source());
+  }
+  
+  protected URI extractSourceFromClass(Class<?> beanClass) {
+    if (!beanClass.isAnnotationPresent(PropertySource.class)) {
+      return null;
+    }
+    return toUri(beanClass.getPackage(), beanClass.getAnnotation(PropertySource.class).value());
   }
 
-  protected String extractSourceFromPackage(String packageName) {
+  protected URI extractSourceFromPackage(String packageName) {
     Package pkg = Package.getPackage(packageName);
     if (pkg != null && pkg.isAnnotationPresent(PropertySource.class)) {
-      return resolve(pkg, pkg.getAnnotation(PropertySource.class).value());
+      return toUri(pkg, pkg.getAnnotation(PropertySource.class).value());
     } else {
       int index = packageName.lastIndexOf('.');
       if (index > 0) {
@@ -154,22 +171,42 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
-  protected String extractDefaultSource(Class<?> beanClass) {
+  protected URI extractDefaultSource(Class<?> beanClass) {
     String defaultName = Introspector.decapitalize(beanClass.getSimpleName()) + PROPERTIES_FILE_EXTENSION;
-    return resolve(beanClass.getPackage(), defaultName);
+    return toUri(beanClass.getPackage(), defaultName);
   }
 
-  protected String resolve(Package pkg, String source) {
-    if (isAbsolute(source)) {
-      return source.substring(1);
+  protected URI toUri(Package pkg, String source) {
+    source = expandSourceSystemProperties(source);
+    try {
+      URI uri = new URI(source);
+      if (uri.getScheme() != null && !CLASSPATH_SCHEME.equals(uri.getScheme())) {
+        return uri;
+      }
+      return new URI(uri.getScheme(),
+                     uri.getUserInfo(),
+                     uri.getHost(),
+                     uri.getPort(),
+                     resolve(pkg, uri.getPath()),
+                     uri.getQuery(),
+                     uri.getFragment());
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
+  
+  protected String resolve(Package pkg, String path) {
+    if (isAbsolute(path)) {
+      return path;
     } else {
       String packageName = pkg.getName();
-      int capacity = packageName.length() + source.length() + 1;
-      StringBuilder sourceBuilder = new StringBuilder(capacity);
-      sourceBuilder.append(packageName.replace('.', '/'));
-      sourceBuilder.append('/');
-      sourceBuilder.append(source);
-      return sourceBuilder.toString();
+      int capacity = packageName.length() + path.length() + 2;
+      StringBuilder pathBuilder = new StringBuilder(capacity);
+      pathBuilder.append('/');
+      pathBuilder.append(packageName.replace('.', '/'));
+      pathBuilder.append('/');
+      pathBuilder.append(path);
+      return pathBuilder.toString();
     }
   }
   
@@ -177,18 +214,16 @@ public class DefaultPropertyProvider implements PropertyProvider {
     return source.charAt(0) == '/';
   }
 
-  protected Properties getProperties(String source) {
+  protected Properties getProperties(URI source) {
     Properties p = properties.get(source);
     return p != null ? p : loadPropertiesFromLoader(source);
   }
 
 
-  protected synchronized Properties loadPropertiesFromLoader(String source) {
-    String expandedSourceName = expandSourceSystemProperties(source);
-
+  protected synchronized Properties loadPropertiesFromLoader(URI source) {
     for (PropertySourceLoader sourceLoader : sourceLoaders) {
-      if (sourceLoader.supports(expandedSourceName)) {
-        Properties p = sourceLoader.load(expandedSourceName);
+      if (sourceLoader.supports(source)) {
+        Properties p = sourceLoader.load(source);
         for (Object key : p.keySet()) {
           p.put(key, expandPropertyValue(p, String.valueOf(p.get(key))));
         }
@@ -198,7 +233,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
         return p;
       }
     }
-    throw new IllegalArgumentException("Unsupported source reference " + expandedSourceName);
+    throw new IllegalArgumentException("Unsupported source reference " + source);
   }
 
 

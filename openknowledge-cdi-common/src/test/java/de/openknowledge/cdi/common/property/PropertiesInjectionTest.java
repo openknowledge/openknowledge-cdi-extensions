@@ -31,19 +31,19 @@ import static org.junit.Assert.assertEquals;
 public class PropertiesInjectionTest {
 
   @Inject
-  @Property(name = "testString", source = "de/openknowledge/cdi/common/property/test.properties")
+  @Property(name = "testString", source = "/de/openknowledge/cdi/common/property/test.properties")
   private String stringProperty;
 
   @Inject
-  @Property(name = "missingInFile", defaultValue = "defaultStringValue", source = "de/openknowledge/cdi/common/property/test.properties")
+  @Property(name = "missingInFile", defaultValue = "defaultStringValue", source = "test.properties")
   private String stringPropertyWithDefaultValue;
 
   @Inject
-  @Property(name = "testInt", source = "de/openknowledge/cdi/common/property/test.properties")
+  @Property(name = "testInt", source = "test.properties")
   private int intProperty;
 
   @Inject
-  @Property(name = "missingInFile", defaultValue = "50", source = "de/openknowledge/cdi/common/property/test.properties")
+  @Property(name = "missingInFile", defaultValue = "50", source = "test.properties")
   private int intPropertyWithDefaultValue;
 
 

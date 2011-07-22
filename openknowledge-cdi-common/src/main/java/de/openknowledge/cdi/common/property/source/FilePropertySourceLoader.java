@@ -16,14 +16,14 @@
 
 package de.openknowledge.cdi.common.property.source;
 
-import de.openknowledge.cdi.common.annotation.Order;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Properties;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  *
@@ -35,34 +35,37 @@ import java.util.Properties;
  * Order value is {@link Integer#MAX_VALUE} - 1.
  *
  * @author Jens Schumann - open knowledge GmbH
+ * @author Arne Limburg - open knowledge GmbH
  * @version $Revision: 7659 $
  */
-@Order(Integer.MAX_VALUE - 1)
 public class FilePropertySourceLoader extends AbstractPropertySourceLoader {
 
-  public static final String FILE_PREFIX = "file:";
+  public static final String FILE_SCHEME = "file";
 
   private static final Log LOG = LogFactory.getLog(FilePropertySourceLoader.class);
 
-  public boolean supports(String source) {
-    return source.startsWith(FILE_PREFIX);
+  public boolean supports(URI source) {
+    return FILE_SCHEME.equals(source.getScheme());
   }
 
-  public Properties load(String resourceName) {
+  public Properties load(URI resource) {
     Properties properties = new Properties();
-    File absoluteFile = null;
-
+    
     try {
-      String path = resourceName.substring(FILE_PREFIX.length());
-      absoluteFile = new File(path).getAbsoluteFile();
-      if (absoluteFile.exists() && absoluteFile.canRead()) {
-        LOG.debug("Loading properties from file " + absoluteFile);
-        loadFromStream(properties, new FileInputStream(absoluteFile));
+      File file;
+      if (resource.isOpaque()) {
+        file = new File(resource.getSchemeSpecificPart());
       } else {
-        LOG.debug("Unable to load properties from file " + absoluteFile + ". File does not exist or is not readable.");
+        file = new File(resource);
+      }
+      if (file.exists() && file.canRead()) {
+        LOG.debug("Loading properties from file " + file);
+        loadFromStream(properties, new FileInputStream(file));
+      } else {
+        LOG.debug("Unable to load properties from file " + file + ". File does not exist or is not readable.");
       }
     } catch (IOException e) {
-      LOG.warn("Error loading properties from file resource " + absoluteFile + ": " + e.getMessage());
+      LOG.warn("Error loading properties from file resource " + resource + ": " + e.getMessage());
     }
 
     return properties;
