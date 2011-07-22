@@ -182,7 +182,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
   }
   
   protected boolean isAbsolute(String source) {
-    return source.charAt(0) == '/';
+    return !source.startsWith("file:") && source.charAt(0) == '/';
   }
 
   protected Properties getProperties(String source) {
