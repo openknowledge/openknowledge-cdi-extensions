@@ -68,21 +68,13 @@ public class DefaultPropertyProvider implements PropertyProvider {
   private List<PropertySourceLoader> sourceLoaders = new ArrayList<PropertySourceLoader>();
 
   public String getPropertyValue(InjectionPoint injectionPoint) {
+  
     Property property = injectionPoint.getAnnotated().getAnnotation(Property.class);
 
-    String source = getSource(injectionPoint, property);
+    Properties properties = getProperties(getSource(injectionPoint, property));
 
-    String value = null;
+    return properties.getProperty(property.name(), expandPropertyValue(properties, property.defaultValue()));
 
-    if (source != null) {
-      value = getProperties(source).getProperty(property.name());
-    }
-
-    if (value == null && !"".equals(property.defaultValue())) {
-      return property.defaultValue();
-    } else {
-      return value;
-    }
   }
 
   public Properties getPropertyValues(InjectionPoint wildCard) {
@@ -125,18 +117,18 @@ public class DefaultPropertyProvider implements PropertyProvider {
   }
 
   protected String extractSource(InjectionPoint injectionPoint, Property property) {
-    String source = property.source();
-    if (source.length() == 0) {
-      source = extractSourceFromClass(injectionPoint.getBean().getBeanClass());
-      if (source == null) {
-        source = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
-        if (source == null) {
-        	source = extractDefaultSource(injectionPoint.getBean().getBeanClass());
-        }
-      }
+    if (property.source().length() > 0) {
+      return property.source();
     }
-
-    return source;
+    String classSource = extractSourceFromClass(injectionPoint.getBean().getBeanClass());
+    if (classSource != null) {
+      return classSource;
+    }
+    String packageSource = extractSourceFromPackage(injectionPoint.getBean().getBeanClass().getPackage().getName());
+    if (packageSource != null) {
+      return packageSource;
+    }
+    return extractDefaultSource(injectionPoint.getBean().getBeanClass());
   }
 
   protected String extractSourceFromClass(Class<?> beanClass) {
@@ -198,7 +190,7 @@ public class DefaultPropertyProvider implements PropertyProvider {
       if (sourceLoader.supports(expandedSourceName)) {
         Properties p = sourceLoader.load(expandedSourceName);
         for (Object key : p.keySet()) {
-          p.put(key, expandProperties(p, String.valueOf(p.get(key))));
+          p.put(key, expandPropertyValue(p, String.valueOf(p.get(key))));
         }
 
         // cache result
@@ -233,14 +225,14 @@ public class DefaultPropertyProvider implements PropertyProvider {
     }
   }
 
-  protected String expandProperties(Properties p, String value) {
+  protected String expandPropertyValue(Properties p, String value) {
     int i = value.indexOf("${");
     if (i >= 0) {
       int last = value.indexOf("}", i);
       if (last > 0) {
         String placeholder = value.substring(i + 2, last);
         value = value.substring(0, i) + replaceProperty(p, placeholder) + value.substring(last + 1);
-        return expandProperties(p, value);
+        return expandPropertyValue(p, value);
       }
     }
 
