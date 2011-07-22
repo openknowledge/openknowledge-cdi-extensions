@@ -36,36 +36,36 @@ import java.io.Serializable;
  *
  * @author Arne Limburg - open knowledge GmbH
  */
-public class AbstractTransactionAttributeInterceptor implements Serializable {
+public abstract class AbstractTransactionAttributeInterceptor implements Serializable {
 
   @Inject
-  private UserTransaction userTransaction;
+  private UserTransactionHolder utHolder;
 
   @Inject
   @Any
   private Instance<EntityManager> entityManagers;
 
   public TransactionManager getTransactionManager() throws NotSupportedException {
-    if (!(userTransaction instanceof TransactionManager)) {
+    if (!(utHolder.getUserTransaction() instanceof TransactionManager)) {
       throw new NotSupportedException("Cannot receive TransactionManager");
     }
-    return (TransactionManager) userTransaction;
+    return (TransactionManager) utHolder.getUserTransaction();
   }
 
   public boolean isTransactionActive() throws SystemException {
-    return userTransaction.getStatus() == Status.STATUS_ACTIVE;
+    return utHolder.getUserTransaction().getStatus() == Status.STATUS_ACTIVE;
   }
 
   public boolean isTransactionMarkedRollback() throws SystemException {
-    return userTransaction.getStatus() == Status.STATUS_MARKED_ROLLBACK;
+    return utHolder.getUserTransaction().getStatus() == Status.STATUS_MARKED_ROLLBACK;
   }
 
   public void markTransactionRollbackOnly() throws SystemException {
-    userTransaction.setRollbackOnly();
+    utHolder.getUserTransaction().setRollbackOnly();
   }
 
   public void beginTransaction() throws NotSupportedException, SystemException {
-    userTransaction.begin();
+    utHolder.getUserTransaction().begin();
     // this should not be necessary
     if (entityManagers != null) {
       for (EntityManager manager : entityManagers) {
@@ -75,18 +75,18 @@ public class AbstractTransactionAttributeInterceptor implements Serializable {
   }
 
   public void commitTransaction() throws RollbackException, HeuristicMixedException, HeuristicRollbackException, SystemException {
-    userTransaction.commit();
+    utHolder.getUserTransaction().commit();
   }
 
   public void rollbackTransaction() throws SystemException {
-    userTransaction.rollback();
+    utHolder.getUserTransaction().rollback();
   }
 
   protected void rollbackTransactionIfNeeded(boolean responsible, Exception exception) throws SystemException {
     if (isTransactionActive()) {
       ApplicationException applicationException = exception.getClass().getAnnotation(ApplicationException.class);
       if (applicationException == null || applicationException.rollback()) {
-        userTransaction.setRollbackOnly();
+        utHolder.getUserTransaction().setRollbackOnly();
       }
     }
   }
@@ -102,6 +102,6 @@ public class AbstractTransactionAttributeInterceptor implements Serializable {
   }
 
   public void setUserTransaction(UserTransaction userTransaction) {
-    this.userTransaction = userTransaction;
+    this.utHolder = new DefaultUserTransactionHolder(userTransaction);
   }
 }
