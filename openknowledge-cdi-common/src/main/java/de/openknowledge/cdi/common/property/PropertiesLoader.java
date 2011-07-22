@@ -57,7 +57,11 @@ public class PropertiesLoader {
   @Property(name = "any")
   public Object produceProperty(InjectionPoint injectionPoint) {
     Class<?> type = toClass(injectionPoint.getType());
-    return newInstance(type, produceStringProperty(injectionPoint));
+    String value = produceStringProperty(injectionPoint);
+    if (value == null) {
+      return null;
+    }
+    return newInstance(type, value);
   }
 
   public String produceStringProperty(InjectionPoint injectionPoint) {
@@ -157,17 +161,17 @@ public class PropertiesLoader {
     return value.charAt(0);
   }
 
-  private Class<?> toClass(Type type) {
+  static Class<?> toClass(Type type) {
     if (type instanceof Class<?>) {
       return (Class<?>)type;
     } else if (type instanceof ParameterizedType) {
-      return (Class<?>)((ParameterizedType)type).getRawType();
+      return toClass(((ParameterizedType)type).getRawType());
     } else {
       throw new IllegalArgumentException("unsupported type for property injection: " + type);
     }
   }
 
-  private <T> T newInstance(Class<T> type, String value) {
+  static <T> T newInstance(Class<T> type, String value) {
     try {
       return type.getConstructor(String.class).newInstance(value);
     } catch (NoSuchMethodException e) {

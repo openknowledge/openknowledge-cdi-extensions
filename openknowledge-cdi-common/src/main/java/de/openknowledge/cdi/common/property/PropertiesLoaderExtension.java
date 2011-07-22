@@ -17,10 +17,10 @@
 package de.openknowledge.cdi.common.property;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Properties;
 import java.util.Set;
 
 import javax.enterprise.event.Observes;
@@ -92,7 +92,7 @@ public class PropertiesLoaderExtension implements Extension {
   private static boolean isPropertyInjectionPoint(Annotated annotated) {
     return annotated.isAnnotationPresent(Property.class)
            && !isPrimitiveType(annotated.getBaseType())
-           && !Properties.class.equals(annotated.getBaseType());
+           && hasStringConstructor(annotated.getBaseType());
   }
   
   private static boolean isPrimitiveType(Type type) {
@@ -103,6 +103,16 @@ public class PropertiesLoaderExtension implements Extension {
     return classType.isPrimitive();
   }
   
+  private static boolean hasStringConstructor(Type type) {
+    for (Constructor<?> constructor: PropertiesLoader.toClass(type).getConstructors()) {
+      Class<?>[] parameterTypes = constructor.getParameterTypes();
+      if (parameterTypes.length == 1 && String.class.equals(parameterTypes[0])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private boolean isProducePropertyBean(Bean<?> bean) {
     if (bean.getTypes().size() > 1) {
       return false;
