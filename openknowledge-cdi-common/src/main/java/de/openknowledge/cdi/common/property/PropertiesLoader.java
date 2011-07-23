@@ -26,6 +26,8 @@ import javax.enterprise.inject.Produces;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
 
+import org.apache.commons.lang.ClassUtils;
+
 import de.openknowledge.cdi.common.property.source.PropertyProvider;
 import de.openknowledge.cdi.common.qualifier.Current;
 
@@ -53,114 +55,49 @@ public class PropertiesLoader {
     return provider.getPropertyValues(injectionPoint);
   }
 
+  /**
+   * Creates an object, assuming the object has a constructor that takes a {@link String} argument.
+   * The type of the object is determined from the type of the specified injection point.
+   * The value for the constructor argument of type {@link String} is taken from the {@link Property}
+   * specified at the injection point.
+   * 
+   * @param injectionPoint the injection point to get the type and the property from
+   * @return the value which's type depends on the type of the injection point
+   */
   @Produces
   @Property(name = "any")
   public Object produceProperty(InjectionPoint injectionPoint) {
     Class<?> type = toClass(injectionPoint.getType());
-    String value = produceStringProperty(injectionPoint);
-    if (value == null) {
-      return null;
-    }
-    return newInstance(type, value);
+    return newInstance(injectionPoint, getPropertyValue(injectionPoint, type), ClassUtils.primitiveToWrapper(type));
   }
 
-  public String produceStringProperty(InjectionPoint injectionPoint) {
-    String value = provider.getPropertyValue(injectionPoint);
-    currentValues.registerPropertyValue(injectionPoint, value);
-    return value;
-  }
-
+  /**
+   * Creates a {@link Character} object from the specified injection point.
+   * The character value is taken from the {@link Property} specified at the injection point.
+   * This method is needed in addition to {@link #produceProperty(InjectionPoint)} since
+   * {@link Character} has no constructor that takes a {@link String} argument.
+   * 
+   * @param injectionPoint the injection point to get the property from
+   * @return the character value
+   */
   @Produces
   @Property(name = "any")
-  public byte produceByteProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Byte.TYPE);
-    try {
-      return Byte.parseByte(value);
-    } catch (NumberFormatException e) {
-      throw buildIllegalArgumentException(injectionPoint, value, Byte.TYPE);
-    }
-  }
-
-  @Produces
-  @Property(name = "any")
-  public short produceShortProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Short.TYPE);
-    try {
-      return Short.parseShort(value);
-    } catch (NumberFormatException e) {
-      throw buildIllegalArgumentException(injectionPoint, value, Short.TYPE);
-    }
-  }
-
-  @Produces
-  @Property(name = "any")
-  public int produceIntProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Integer.TYPE);
-    try {
-      return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      throw buildIllegalArgumentException(injectionPoint, value, Integer.TYPE);
-    }
-  }
-
-  @Produces
-  @Property(name = "any")
-  public long produceLongProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Long.TYPE);
-    try {
-      return Long.parseLong(value);
-    } catch (NumberFormatException e) {
-      throw buildIllegalArgumentException(injectionPoint, value, Long.TYPE);
-    }
-  }
-
-  @Produces
-  @Property(name = "any")
-  public float produceFloatProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Float.TYPE);
-    try {
-      return Float.parseFloat(value);
-    } catch (NumberFormatException e) {
-      throw buildIllegalArgumentException(injectionPoint, value, Float.TYPE);
-    }
-  }
-
-  @Produces
-  @Property(name = "any")
-  public double produceDoubleProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Double.TYPE);
-    try {
-      return Double.parseDouble(value);
-    } catch (NumberFormatException e) {
-      throw buildIllegalArgumentException(injectionPoint, value, Double.TYPE);
-    }
-  }
-
-  @Produces
-  @Property(name = "any")
-  public boolean produceBooleanProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Boolean.TYPE);
-    return Boolean.parseBoolean(value);
-  }
-
-  @Produces
-  @Property(name = "any")
-  public char produceCharProperty(InjectionPoint injectionPoint) {
-    String value = produceStringProperty(injectionPoint);
-    assertNotNull(injectionPoint, value, Character.TYPE);
+  public Character produceCharacterProperty(InjectionPoint injectionPoint) {
+    Class<?> type = toClass(injectionPoint.getType());
+    String value = getPropertyValue(injectionPoint, type);
     if (value.length() != 1) {
-      throw buildIllegalArgumentException(injectionPoint, value, Character.TYPE);
+      throw buildIllegalArgumentException(injectionPoint, value, type, null);
     }
     return value.charAt(0);
   }
 
+  protected String getPropertyValue(InjectionPoint injectionPoint, Class<?> targetType) {
+    String value = provider.getPropertyValue(injectionPoint);
+    assertPrimitiveNotNull(injectionPoint, value, targetType);
+    currentValues.registerPropertyValue(injectionPoint, value);
+    return value;
+  }
+  
   static Class<?> toClass(Type type) {
     if (type instanceof Class<?>) {
       return (Class<?>)type;
@@ -171,7 +108,10 @@ public class PropertiesLoader {
     }
   }
 
-  static <T> T newInstance(Class<T> type, String value) {
+  private <T> T newInstance(InjectionPoint injectionPoint, String value, Class<T> type) {
+    if (value == null) {
+      return null;
+    }
     try {
       return type.getConstructor(String.class).newInstance(value);
     } catch (NoSuchMethodException e) {
@@ -179,27 +119,22 @@ public class PropertiesLoader {
     } catch (IllegalAccessException e) {
       throw new IllegalArgumentException("String-constructor must be public");
     } catch (InstantiationException e) {
-      throw new IllegalStateException(e);
+      throw buildIllegalArgumentException(injectionPoint, value, type, e);
     } catch (InvocationTargetException e) {
-      if (e.getTargetException() instanceof RuntimeException) {
-        throw (RuntimeException)e.getTargetException();
-      } else if (e.getTargetException() instanceof Error) {
-        throw (Error)e.getTargetException();
-      } else {
-        throw new IllegalArgumentException(e.getTargetException());
-      }
+      throw buildIllegalArgumentException(injectionPoint, value, type, e.getTargetException());
     }
   }
   
-  private void assertNotNull(InjectionPoint injectionPoint, String value, Class<?> expectedType) {
-    if (value == null) {
-      throw buildIllegalArgumentException(injectionPoint, value, expectedType);
+  private void assertPrimitiveNotNull(InjectionPoint injectionPoint, String value, Class<?> expectedType) {
+    if (expectedType.isPrimitive() && value == null) {
+      throw buildIllegalArgumentException(injectionPoint, value, expectedType, null);
     }
   }
 
   private RuntimeException buildIllegalArgumentException(InjectionPoint injectionPoint,
                                                          String value,
-                                                         Class<?> expectedType) {
+                                                         Class<?> expectedType,
+                                                         Throwable cause) {
     StringBuilder messageBuilder = new StringBuilder();
     messageBuilder.append("Unable to convert ");
     if (value == null) {
@@ -209,6 +144,6 @@ public class PropertiesLoader {
     }
     messageBuilder.append(" to ").append(expectedType.getName());
     messageBuilder.append(" for injection point ").append(injectionPoint);
-    return new IllegalArgumentException(messageBuilder.toString());
+    return new IllegalArgumentException(messageBuilder.toString(), cause);
   }
 }

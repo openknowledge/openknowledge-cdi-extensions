@@ -16,6 +16,11 @@
 
 package de.openknowledge.cdi.common.property;
 
+import static de.openknowledge.cdi.common.property.PropertiesLoader.toClass;
+import static org.apache.commons.lang.ClassUtils.primitiveToWrapper;
+import static org.apache.commons.lang.ClassUtils.wrapperToPrimitive;
+import static org.apache.commons.lang.Validate.notNull;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
@@ -46,7 +51,7 @@ import de.openknowledge.cdi.common.spi.DelegatingBean;
  */
 public class PropertiesLoaderExtension implements Extension {
 
-  private Set<Type> customTypes = new HashSet<Type>();
+  private Set<Class<?>> customTypes = new HashSet<Class<?>>();
   private Bean<?> producePropertyBean;
   
   public <T> void registerCustomTypes(@Observes ProcessAnnotatedType<T> annotatedTypeEvent) {
@@ -62,7 +67,7 @@ public class PropertiesLoaderExtension implements Extension {
   }
   
   public void addBeans(@Observes AfterBeanDiscovery afterBeanDiscoveryEvent) {
-    for (Type customType: customTypes) {
+    for (Class<?> customType: customTypes) {
       afterBeanDiscoveryEvent.addBean(createProducePropertyBean(producePropertyBean, customType));
     }
   }
@@ -70,20 +75,20 @@ public class PropertiesLoaderExtension implements Extension {
   private void registerCustomType(AnnotatedType<?> annotatedType) {
     for (AnnotatedField<?> field: annotatedType.getFields()) {
       if (isPropertyInjectionPoint(field)) {
-        customTypes.add(field.getBaseType());
+        customTypes.add(primitiveToWrapper(toClass(field.getBaseType())));
       }
     }
     for (AnnotatedMethod<?> method: annotatedType.getMethods()) {
       for (AnnotatedParameter<?> parameter: method.getParameters()) {
         if (isPropertyInjectionPoint(parameter)) {
-          customTypes.add(parameter.getBaseType());
+          customTypes.add(primitiveToWrapper(toClass(parameter.getBaseType())));
         }
       }
     }
     for (AnnotatedConstructor<?> constructor: annotatedType.getConstructors()) {
       for (AnnotatedParameter<?> parameter: constructor.getParameters()) {
         if (isPropertyInjectionPoint(parameter)) {
-          customTypes.add(parameter.getBaseType());
+          customTypes.add(primitiveToWrapper(toClass(parameter.getBaseType())));
         }
       }
     }
@@ -91,20 +96,11 @@ public class PropertiesLoaderExtension implements Extension {
   
   private static boolean isPropertyInjectionPoint(Annotated annotated) {
     return annotated.isAnnotationPresent(Property.class)
-           && !isPrimitiveType(annotated.getBaseType())
-           && hasStringConstructor(annotated.getBaseType());
+           && isStringConstructorPresent(annotated.getBaseType());
   }
   
-  private static boolean isPrimitiveType(Type type) {
-    if (!(type instanceof Class)) {
-      return false;
-    }
-    Class<?> classType = (Class<?>)type;
-    return classType.isPrimitive();
-  }
-  
-  private static boolean hasStringConstructor(Type type) {
-    for (Constructor<?> constructor: PropertiesLoader.toClass(type).getConstructors()) {
+  private static boolean isStringConstructorPresent(Type type) {
+    for (Constructor<?> constructor: primitiveToWrapper(toClass(type)).getConstructors()) {
       Class<?>[] parameterTypes = constructor.getParameterTypes();
       if (parameterTypes.length == 1 && String.class.equals(parameterTypes[0])) {
         return true;
@@ -128,22 +124,35 @@ public class PropertiesLoaderExtension implements Extension {
     return false;
   }
   
-  private <T> Bean<T> createProducePropertyBean(Bean<T> bean, Type type) {
+  private <T> Bean<T> createProducePropertyBean(Bean<T> bean, Class<?> type) {
     return new ProducePropertyBean<T>(bean, type);
   }
 
   private class ProducePropertyBean<T> extends DelegatingBean<T> {
 
-    private Type type;
+    private Class<?> type;
     
-    public ProducePropertyBean(Bean<T> delegateBean, Type type) {
+    public ProducePropertyBean(Bean<T> delegateBean, Class<?> type) {
       super(delegateBean);
+      notNull(type);
       this.type = type;
     }
 
     @Override
     public Set<Type> getTypes() {
-      return Collections.singleton(type);
+      return Collections.<Type>singleton(type);
+    }
+
+    @Override
+    public boolean isNullable() {
+      if (isWrapperType()) {
+        return false;
+      }
+      return super.isNullable();
+    }
+    
+    private boolean isWrapperType() {
+      return wrapperToPrimitive(type) != null;
     }
   }
 }

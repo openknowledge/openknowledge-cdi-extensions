@@ -23,6 +23,8 @@ import org.junit.runner.RunWith;
 import javax.inject.Inject;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author Arne Limburg - open knowledge GmbH
@@ -46,6 +48,17 @@ public class PropertiesInjectionTest {
   @Property(name = "missingInFile", defaultValue = "50", source = "test.properties")
   private int intPropertyWithDefaultValue;
 
+  @Inject
+  @Property(name = "testBoolean", source = "test.properties")
+  private boolean booleanProperty;
+
+  @Inject
+  @Property(name = "testInt", source = "test.properties")
+  private Integer integerProperty;
+
+  @Inject
+  @Property(name = "missingInFile", source = "test.properties")
+  private Integer integerPropertyMissingInFile;
 
   @Test
   public void success() {
@@ -54,5 +67,10 @@ public class PropertiesInjectionTest {
 
     assertEquals(50, intProperty);
     assertEquals(50, intPropertyWithDefaultValue);
+    
+    assertTrue(booleanProperty);
+
+    assertEquals(Integer.valueOf(50), integerProperty);
+    assertNull(integerPropertyMissingInFile);
   }
 }
