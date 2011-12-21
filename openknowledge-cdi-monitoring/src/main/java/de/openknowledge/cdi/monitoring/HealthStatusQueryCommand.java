@@ -18,6 +18,7 @@ package de.openknowledge.cdi.monitoring;
 
 import org.apache.commons.lang.SystemUtils;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -57,6 +58,10 @@ public class HealthStatusQueryCommand {
 
   public boolean isOK() {
     return !hasErrors() && !hasWarnings();
+  }
+
+  public Map<ComponentStatusType, Set<ComponentStatus>> getStatus() {
+    return Collections.unmodifiableMap(status);
   }
 
   public String toString() {
