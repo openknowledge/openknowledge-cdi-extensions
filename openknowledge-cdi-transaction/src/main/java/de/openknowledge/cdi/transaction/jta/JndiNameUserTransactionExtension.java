@@ -17,18 +17,18 @@
 package de.openknowledge.cdi.transaction.jta;
 
 import de.openknowledge.cdi.common.spi.AbstractCdiBean;
-import de.openknowledge.cdi.common.spi.SingletonBean;
 
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.AfterBeanDiscovery;
-import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.inject.spi.Extension;
+import javax.enterprise.inject.spi.ProcessBean;
+import javax.enterprise.inject.spi.ProcessProducerField;
+import javax.enterprise.inject.spi.ProcessProducerMethod;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.transaction.UserTransaction;
-import java.util.Set;
 
 /**
  * Provides a via JNDI accessible UserTransaction as injectable resource. As soon as
@@ -42,15 +42,34 @@ public class JndiNameUserTransactionExtension implements Extension {
 
   private String userTransactionName = USER_TRANSACTION_JNDI_NAME;
 
+  private boolean utxMissing = true;
+
 
   protected String getUserTransactionName() {
     return userTransactionName;
   }
 
-  public void addLinkToResource(@Observes AfterBeanDiscovery event, BeanManager bm) {
-    Set<Bean<?>> set = bm.getBeans(UserTransaction.class);
+  public <T> void registerUserTransaction(@Observes ProcessBean<T> bean){
+    if(bean.getBean().getBeanClass().getName().equals(UserTransaction.class.getName())) {
+     utxMissing = false;
+    }
+  }
 
-    if (set.size() == 0) {
+  public <T, X> void registerUserTransaction(@Observes ProcessProducerMethod<T,X> bean){
+    if(bean.getBean().getBeanClass().getName().equals(UserTransaction.class.getName())) {
+     utxMissing = false;
+    }
+  }
+
+  public <T, X> void registerUserTransaction(@Observes ProcessProducerField<T,X> bean){
+    if(bean.getBean().getBeanClass().getName().equals(UserTransaction.class.getName())) {
+     utxMissing = false;
+    }
+  }
+
+
+  public void addLinkToResource(@Observes AfterBeanDiscovery event, BeanManager bm) {
+    if (utxMissing) {
       event.addBean(new AbstractCdiBean<UserTransaction>("userTransaction", UserTransaction.class, bm) {
         public UserTransaction create(CreationalContext<UserTransaction> userTransactionCreationalContext) {
           InitialContext ctx = null;
