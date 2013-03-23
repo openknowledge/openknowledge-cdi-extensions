@@ -31,8 +31,8 @@ import javax.naming.NamingException;
 import javax.transaction.UserTransaction;
 
 /**
- * Provides a via JNDI accessible UserTransaction as injectable resource. As soon as
- * this extension is activated
+ * Provides a via JNDI accessible UserTransaction as injectable resource as soon
+ * as no UserTransaction was located during CDI runtime startup.
  *
  * @author Jens Schumann - open knowledge GmbH
  */
@@ -49,22 +49,16 @@ public class JndiNameUserTransactionExtension implements Extension {
     return userTransactionName;
   }
 
-  public <T> void registerUserTransaction(@Observes ProcessBean<T> bean){
-    if(bean.getBean().getBeanClass().getName().equals(UserTransaction.class.getName())) {
-     utxMissing = false;
-    }
+  public <T> void isUserTransaction(@Observes ProcessBean<T> bean){
+    checkUtxAvailability(bean.getBean().getBeanClass());
   }
 
-  public <T, X> void registerUserTransaction(@Observes ProcessProducerMethod<T,X> bean){
-    if(bean.getBean().getBeanClass().getName().equals(UserTransaction.class.getName())) {
-     utxMissing = false;
-    }
+  public <T, X> void isUserTransaction(@Observes ProcessProducerMethod<T, X> bean){
+    checkUtxAvailability(bean.getBean().getBeanClass());
   }
 
-  public <T, X> void registerUserTransaction(@Observes ProcessProducerField<T,X> bean){
-    if(bean.getBean().getBeanClass().getName().equals(UserTransaction.class.getName())) {
-     utxMissing = false;
-    }
+  public <T, X> void isUserTransaction(@Observes ProcessProducerField<T, X> bean){
+    checkUtxAvailability(bean.getBean().getBeanClass());
   }
 
 
@@ -84,7 +78,7 @@ public class JndiNameUserTransactionExtension implements Extension {
                 ctx.close();
               }
             } catch (NamingException e) {
-              // ingore
+              // ignore
             }
           }
         }
@@ -93,6 +87,12 @@ public class JndiNameUserTransactionExtension implements Extension {
 
         }
       });
+    }
+  }
+
+  protected void checkUtxAvailability(Class<?> aBeanClass) {
+    if(UserTransaction.class.isAssignableFrom(aBeanClass)) {
+     utxMissing = false;
     }
   }
 }
